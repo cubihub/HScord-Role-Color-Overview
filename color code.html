@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Hero Siege Role Color Overview</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f8f8f8;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 12px;
+    }
+    .color-box {
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      height: 100px;
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      padding: 8px;
+      transition: transform 0.1s ease;
+    }
+    .color-box:hover {
+      transform: scale(1.05);
+    }
+    .color-box.light {
+      color: black;
+    }
+    .remove-btn {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-size: 16px;
+      color: white;
+      background: rgba(0,0,0,0.3);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .remove-btn:hover {
+      background: rgba(0,0,0,0.6);
+    }
+    .color-box.light .remove-btn {
+      color: black;
+      background: rgba(255,255,255,0.5);
+    }
+    .color-box.light .remove-btn:hover {
+      background: rgba(255,255,255,0.8);
+    }
+    .add-form {
+      margin-top: 20px;
+    }
+    .add-form input {
+      padding: 6px;
+      margin-right: 8px;
+    }
+    .color-box.drag-over {
+      outline: 3px dashed #333;
+      outline-offset: -6px;
+    }
+    #selectedInfo {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🎨 Role Color Overview</h1>
+<div class="color-grid" id="colorGrid">
+  <!-- Farbfelder werden hier generiert -->
+</div>
+
+<div id="selectedInfo"></div>
+
+<div class="add-form">
+  <h3>➕ Add New Color</h3>
+  <input type="text" id="roleName" placeholder="Role">
+  <input type="color" id="colorPicker" value="#ff0000" onchange="syncHex()">
+  <input type="text" id="hexCode" placeholder="#HEX" value="#ff0000">
+  <button onclick="addColor()">Add</button>
+</div>
+
+<script>
+  let colors = [
+    { name: "PAS", hex: "#ff0067" },
+    { name: "Manager", hex: "#d8466d" },
+    { name: "Mod Mail", hex: "#9e134f" },
+    { name: "Mod", hex: "#de761b" },
+    { name: "Localization", hex: "#23edff" },
+    { name: "Booster", hex: "#f47fff" },
+    { name: "Harbinger", hex: "#48cae4" },
+    { name: "Angel", hex: "#feff99" },
+    { name: "Lord", hex: "#00ffae" },
+    { name: "Legend", hex: "#0cbc1c" },
+    { name: "King", hex: "#ca1717" },
+    { name: "Paladin", hex: "#b115eb" },
+    { name: "Knight", hex: "#e9cb0a" },
+    { name: "Soldier", hex: "#2e62c2" },
+    { name: "Recruit", hex: "#9994a7" }
+  ];
+
+  function isLight(hex) {
+    const c = hex.replace("#", "");
+    const r = parseInt(c.substr(0,2),16);
+    const g = parseInt(c.substr(2,2),16);
+    const b = parseInt(c.substr(4,2),16);
+    const brightness = (r*299 + g*587 + b*114) / 1000;
+    return brightness > 160;
+  }
+
+  let dragIndex = null;
+
+  function renderColors() {
+    const grid = document.getElementById("colorGrid");
+    grid.innerHTML = "";
+    const info = document.getElementById("selectedInfo");
+    colors.forEach((color, index) => {
+      const box = document.createElement("div");
+      box.className = "color-box" + (isLight(color.hex) ? " light" : "");
+      box.style.backgroundColor = color.hex;
+      box.title = `${color.name} (${color.hex})`;
+      box.innerText = color.name;
+      box.draggable = true;
+
+      // Klick zeigt Info
+      box.addEventListener("click", () => {
+        info.innerText = `🔍 ${color.name}: ${color.hex}`;
+      });
+
+      // Drag Events
+      box.addEventListener("dragstart", () => {
+        dragIndex = index;
+      });
+
+      box.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        box.classList.add("drag-over");
+      });
+
+      box.addEventListener("dragleave", () => {
+        box.classList.remove("drag-over");
+      });
+
+      box.addEventListener("drop", () => {
+        box.classList.remove("drag-over");
+        if (dragIndex === null || dragIndex === index) return;
+        const dragged = colors[dragIndex];
+        colors.splice(dragIndex, 1);
+        colors.splice(index, 0, dragged);
+        dragIndex = null;
+        renderColors();
+      });
+
+      // ❌ Entfernen-Button
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "remove-btn";
+      removeBtn.innerHTML = "❌";
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
+        colors.splice(index, 1);
+        renderColors();
+        info.innerText = ""; // Anzeige zurücksetzen
+      };
+      box.appendChild(removeBtn);
+
+      grid.appendChild(box);
+    });
+  }
+
+  function addColor() {
+    const name = document.getElementById("roleName").value.trim();
+    const hex = document.getElementById("hexCode").value.trim();
+    if (!name || !/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) {
+      alert("Bitte gültigen Namen und Hex-Code eingeben!");
+      return;
+    }
+    colors.push({ name, hex });
+    renderColors();
+    document.getElementById("roleName").value = "";
+    document.getElementById("hexCode").value = "#ff0000";
+    document.getElementById("colorPicker").value = "#ff0000";
+    document.getElementById("selectedInfo").innerText = "";
+  }
+
+  function syncHex() {
+    const picker = document.getElementById("colorPicker");
+    document.getElementById("hexCode").value = picker.value;
+  }
+
+  renderColors();
+</script>
+<hr style="margin: 40px 0;">
+
+<h3>ℹ️ Tool Features</h3>
+<ul>
+  <li><strong>Add Role:</strong> Enter name and color, then click <em>Add</em></li>
+  <li><strong>Remove Role:</strong> Click ❌ to delete a role</li>
+  <li><strong>Drag & Drop:</strong> Reorder roles by dragging them</li>
+  <li><strong>Hex Info:</strong> Click on a color to see its hex code</li>
+  <li><strong>Auto Text Color:</strong> Text color adjusts based on background brightness</li>
+</ul>
+
+</body>
+</html>
